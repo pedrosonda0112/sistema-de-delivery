@@ -6,7 +6,7 @@ Este projeto consiste em um sistema de tele-entrega de alimentos criado em Pytho
 
 ---
 
-🎯 Funcionalidades
+Funcionalidades
 
 Para Clientes:
 - Registro com nome, telefone, endereço, e-mail, CPF e senha.
