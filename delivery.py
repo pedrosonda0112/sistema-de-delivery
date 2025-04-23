@@ -35,8 +35,9 @@ class Cliente(Usuario):
                 break
 
 class Restaurante(Usuario):
-    def __init__(self, nome, telefone, endereco, email, cnpj):
+    def __init__(self, nome, telefone, endereco, email, cnpj,senha):
         super().__init__(nome, telefone, endereco, email, cnpj)
+        self.senha = senha
         self.cardapio = []
 
     def exibir_menu(self):
@@ -103,7 +104,7 @@ class Sistema:
                 for c in dados['clientes']:
                     self.clientes.append(Cliente(c['nome'], c['telefone'], c['endereco'], c['email'], c['cpf'], c.get('senha', '')))
                 for r in dados['restaurantes']:
-                    restaurante = Restaurante(r['nome'], r['telefone'], r['endereco'], r['email'], r['cpf'])
+                    restaurante = Restaurante(r['nome'], r['telefone'], r['endereco'], r['email'], r['cpf'], r.get('senha', ''))
                     restaurante.cardapio = [Prato(**p) for p in r['cardapio']]
                     self.restaurantes.append(restaurante)
                 for p in dados['pedidos']:
@@ -232,11 +233,12 @@ def menu_principal():
 
         elif opcao == "2":
             nome = input("Nome do Restaurante: ")
-            restaurante = next((r for r in sistema.restaurantes if r.nome == nome), None)
+            senha = input("Senha: ")
+            restaurante = next((r for r in sistema.restaurantes if r.nome == nome and r.senha == senha), None)
             if restaurante:
                 restaurante.exibir_menu()
             else:
-                print("Restaurante não encontrado.")
+                print("Restaurante não encontrado ou senha incorreta.")
 
         elif opcao == "3":
             nome = input("Nome: ")
@@ -256,7 +258,8 @@ def menu_principal():
             endereco = input("Endereço: ")
             email = input("Email: ")
             cnpj = input("CNPJ: ")
-            restaurante = Restaurante(nome, telefone, endereco, email, cnpj)
+            senha = input("Senha: ")
+            restaurante = Restaurante(nome, telefone, endereco, email, cnpj, senha)
             sistema.restaurantes.append(restaurante)
             sistema.salvar_dados()
             print("Restaurante cadastrado com sucesso!")
