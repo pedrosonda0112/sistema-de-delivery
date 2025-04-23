@@ -1,3 +1,4 @@
+
 import json
 import os
 from datetime import datetime, timedelta
@@ -63,6 +64,7 @@ class Pedido:
         self.restaurante = restaurante
         self.pratos = pratos
         self.hora_pedido = datetime.now()
+        self.prazo_entrega = self.hora_pedido + timedelta(minutes=30)
         self.status = 'Em preparo'
 
     def to_dict(self):
@@ -71,8 +73,12 @@ class Pedido:
             'restaurante': self.restaurante.nome,
             'pratos': [prato.nome for prato in self.pratos],
             'hora_pedido': self.hora_pedido.strftime('%Y-%m-%d %H:%M:%S'),
+            'prazo_entrega': self.prazo_entrega.strftime('%Y-%m-%d %H:%M:%S'),
             'status': self.status
         }
+
+    def esta_atrasado(self):
+        return self.status in ['Em preparo', 'A caminho'] and datetime.now() > self.prazo_entrega
 
 class Sistema:
     def __init__(self):
@@ -106,6 +112,10 @@ class Sistema:
                     pratos = [next(pr for pr in restaurante.cardapio if pr.nome == nome) for nome in p['pratos']]
                     pedido = Pedido(cliente, restaurante, pratos)
                     pedido.hora_pedido = datetime.strptime(p['hora_pedido'], '%Y-%m-%d %H:%M:%S')
+                    if 'prazo_entrega' in p:
+                        pedido.prazo_entrega = datetime.strptime(p['prazo_entrega'], '%Y-%m-%d %H:%M:%S')
+                    else:
+                        pedido.prazo_entrega = pedido.hora_pedido + timedelta(minutes=30)
                     pedido.status = p['status']
                     self.pedidos.append(pedido)
 
@@ -169,12 +179,12 @@ def ver_pedidos_cliente(cliente):
         return
 
     for p in pedidos:
-        tempo = datetime.now() - p.hora_pedido
         status = p.status
-        if tempo > timedelta(minutes=30) and status == 'Em preparo':
+        if p.esta_atrasado():
             status = 'Atrasado'
         pratos_str = ', '.join(pr.nome for pr in p.pratos)
-        print(f"Restaurante: {p.restaurante.nome} | Pratos: {pratos_str} | Status: {status} | Hora: {p.hora_pedido.strftime('%H:%M')}")
+        print(f"Restaurante: {p.restaurante.nome} | Pratos: {pratos_str} | Status: {status} | Hora Pedido: {p.hora_pedido.strftime('%H:%M')} | Estimado: {p.prazo_entrega.strftime('%H:%M')}")
+
 
 def ver_pedidos_restaurante(restaurante):
     print("\nPedidos do Restaurante:")
@@ -184,8 +194,11 @@ def ver_pedidos_restaurante(restaurante):
         return
 
     for i, p in enumerate(pedidos):
+        status = p.status
+        if p.esta_atrasado():
+            status = 'Atrasado'
         pratos_str = ', '.join(pr.nome for pr in p.pratos)
-        print(f"\nPedido {i+1} | Cliente: {p.cliente.nome} | Pratos: {pratos_str} | Status: {p.status} | Hora: {p.hora_pedido.strftime('%H:%M')}")
+        print(f"\nPedido {i+1} | Cliente: {p.cliente.nome} | Pratos: {pratos_str} | Status: {status} | Hora Pedido: {p.hora_pedido.strftime('%H:%M')} | Estimado: {p.prazo_entrega.strftime('%H:%M')}")
         if p.status == 'Em preparo':
             print("1 - Marcar como A Caminho")
         elif p.status == 'A caminho':
@@ -200,6 +213,7 @@ def ver_pedidos_restaurante(restaurante):
 
     sistema.salvar_dados()
     print("Atualizações concluídas.")
+
 
 def menu_principal():
     while True:
