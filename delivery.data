@@ -1,0 +1,44 @@
+{
+    "clientes": [
+        {
+            "nome": "a",
+            "telefone": "a",
+            "endereco": "",
+            "email": "aa",
+            "cpf": "a",
+            "senha": "a",
+            "resposta_secreta": "a"
+        }
+    ],
+    "restaurantes": [
+        {
+            "nome": "a",
+            "telefone": "a",
+            "endereco": "a",
+            "email": "a",
+            "cpf": "a",
+            "senha": "a",
+            "resposta_secreta": "a",
+            "cardapio": [
+                {
+                    "nome": "a",
+                    "preco": 1.0,
+                    "descricao": "a",
+                    "imagem": null
+                }
+            ]
+        }
+    ],
+    "pedidos": [
+        {
+            "cliente": "a",
+            "restaurante": "a",
+            "pratos": [
+                "a"
+            ],
+            "hora_pedido": "2025-04-23 17:45:25",
+            "prazo_entrega": "2025-04-23 18:15:25",
+            "status": "A caminho"
+        }
+    ]
+}

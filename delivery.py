@@ -3,8 +3,9 @@ import json
 import os
 from datetime import datetime, timedelta
 from abc import ABC, abstractmethod
+from collections import Counter
 
-# Classes de Negócio
+# --- Classes de Negócio ---
 class Usuario(ABC):
     def __init__(self, nome, telefone, endereco, email, cpf):
         self.nome = nome
@@ -18,9 +19,10 @@ class Usuario(ABC):
         pass
 
 class Cliente(Usuario):
-    def __init__(self, nome, telefone, endereco, email, cpf, senha):
+    def __init__(self, nome, telefone, endereco, email, cpf, senha, resposta_secreta):
         super().__init__(nome, telefone, endereco, email, cpf)
         self.senha = senha
+        self.resposta_secreta = resposta_secreta
 
     def exibir_menu(self):
         print(f"\nBem-vindo, {self.nome}!")
@@ -35,9 +37,10 @@ class Cliente(Usuario):
                 break
 
 class Restaurante(Usuario):
-    def __init__(self, nome, telefone, endereco, email, cnpj,senha):
+    def __init__(self, nome, telefone, endereco, email, cnpj, senha, resposta_secreta):
         super().__init__(nome, telefone, endereco, email, cnpj)
         self.senha = senha
+        self.resposta_secreta = resposta_secreta
         self.cardapio = []
 
     def exibir_menu(self):
@@ -102,9 +105,99 @@ class Sistema:
             with open('delivery.data', 'r') as f:
                 dados = json.load(f)
                 for c in dados['clientes']:
-                    self.clientes.append(Cliente(c['nome'], c['telefone'], c['endereco'], c['email'], c['cpf'], c.get('senha', '')))
+                    self.clientes.append(Cliente(c['nome'], c['telefone'], c['endereco'], c['email'], c['cpf'], c.get('senha', ''), c.get('resposta_secreta', '')))
                 for r in dados['restaurantes']:
-                    restaurante = Restaurante(r['nome'], r['telefone'], r['endereco'], r['email'], r['cpf'], r.get('senha', ''))
+                    restaurante = Restaurante(r['nome'], r['telefone'], r['endereco'], r['email'], r['cpf'], r.get('senha', ''), r.get('resposta_secreta', ''))
+                    restaurante.cardapio = [Prato(**p) for p in r['cardapio']]
+                    self.restaurantes.append(restaurante)
+                for p in dados['pedidos']:
+                    cliente = next(c for c in self.clientes if c.nome == p['cliente'])
+                    restaurante = next(r for r in self.restaurantes if r.nome == p['restaurante'])
+                    pratos = [next(pr for pr in restaurante.cardapio if pr.nome == nome) for nome in p['pratos']]
+                    pedido = Pedido(cliente, restaurante, pratos)
+                    pedido.hora_pedido = datetime.strptime(p['hora_pedido'], '%Y-%m-%d %H:%M:%S')
+                    pedido.prazo_entrega = datetime.strptime(p['prazo_entrega'], '%Y-%m-%d %H:%M:%S')
+                    pedido.status = p['status']
+                    self.pedidos.append(pedido)
+
+# --- Funções Auxiliares ---
+def atualizar_status_automaticamente():
+    agora = datetime.now()
+    for pedido in sistema.pedidos:
+        if pedido.status == 'Em preparo' and agora - pedido.hora_pedido >= timedelta(seconds=10):
+            pedido.status = 'A caminho'
+        elif pedido.status == 'A caminho' and agora - pedido.hora_pedido >= timedelta(seconds=20):
+            pedido.status = 'Entregue'
+    sistema.salvar_dados()
+
+def interface_admin():
+    while True:
+        print("\n🔧 Painel do Administrador")
+        print("1 - Ver todos os clientes")
+        print("2 - Ver todos os restaurantes")
+        print("3 - Ver total de pedidos")
+        print("4 - Ver pratos mais pedidos")
+        print("0 - Sair")
+        op = input("Escolha uma opção: ")
+
+        if op == "1":
+            for c in sistema.clientes:
+                print(f"- {c.nome} | {c.email}")
+        elif op == "2":
+            for r in sistema.restaurantes:
+                print(f"- {r.nome} | {r.email}")
+        elif op == "3":
+            print(f"Total de pedidos: {len(sistema.pedidos)}")
+        elif op == "4":
+            todos_pratos = [p.nome for pedido in sistema.pedidos for p in pedido.pratos]
+            mais_comuns = Counter(todos_pratos).most_common(5)
+            for nome, qtd in mais_comuns:
+                print(f"{nome} - {qtd} pedidos")
+        elif op == "0":
+            break
+        else:
+            print("Opção inválida.")
+
+def recuperar_senha(tipo):
+    nome = input("Nome: ")
+    lista = sistema.clientes if tipo == 'cliente' else sistema.restaurantes
+    usuario = next((u for u in lista if u.nome == nome), None)
+    if usuario:
+        resposta = input("Qual o nome do seu primeiro pet? ")
+        if hasattr(usuario, 'resposta_secreta') and usuario.resposta_secreta.lower() == resposta.lower():
+            nova_senha = input("Nova senha: ")
+            usuario.senha = nova_senha
+            sistema.salvar_dados()
+            print("Senha atualizada com sucesso.")
+        else:
+            print("Resposta incorreta.")
+    else:
+        print("Usuário não encontrado.")
+
+class Sistema:
+    def __init__(self):
+        self.clientes = []
+        self.restaurantes = []
+        self.pedidos = []
+        self.carregar_dados()
+
+    def salvar_dados(self):
+        dados = {
+            'clientes': [cliente.__dict__ for cliente in self.clientes],
+            'restaurantes': [{**restaurante.__dict__, 'cardapio': [prato.__dict__ for prato in restaurante.cardapio]} for restaurante in self.restaurantes],
+            'pedidos': [pedido.to_dict() for pedido in self.pedidos]
+        }
+        with open('delivery.data', 'w') as f:
+            json.dump(dados, f, indent=4)
+
+    def carregar_dados(self):
+        if os.path.exists('delivery.data'):
+            with open('delivery.data', 'r') as f:
+                dados = json.load(f)
+                for c in dados['clientes']:
+                    cliente = Cliente(c['nome'], c['telefone'], c['endereco'], c['email'], c['cpf'], c.get('senha', ''), c.get('resposta_secreta', ''))
+                for r in dados['restaurantes']:
+                    restaurante = Restaurante(r['nome'], r['telefone'], r['endereco'], r['email'], r['cpf'], r.get('senha', ''), r.get('resposta_secreta', ''))
                     restaurante.cardapio = [Prato(**p) for p in r['cardapio']]
                     self.restaurantes.append(restaurante)
                 for p in dados['pedidos']:
@@ -218,8 +311,16 @@ def ver_pedidos_restaurante(restaurante):
 
 def menu_principal():
     while True:
+        atualizar_status_automaticamente()
         print("\n--- Sistema de Delivery (Console) ---")
-        print("1 - Login Cliente\n2 - Login Restaurante\n3 - Cadastrar Cliente\n4 - Cadastrar Restaurante\n0 - Sair")
+        print("1 - Login Cliente")
+        print("2 - Login Restaurante")
+        print("3 - Cadastrar Cliente")
+        print("4 - Cadastrar Restaurante")
+        print("5 - Esqueci minha senha (Cliente)")
+        print("6 - Esqueci minha senha (Restaurante)")
+        print("7 - Login Admin")
+        print("0 - Sair")
         opcao = input("Escolha uma opção: ")
 
         if opcao == "1":
@@ -247,7 +348,8 @@ def menu_principal():
             email = input("Email: ")
             cpf = input("CPF: ")
             senha = input("Senha: ")
-            cliente = Cliente(nome, telefone, endereco, email, cpf, senha)
+            resposta = input("Pergunta secreta - Qual o nome do seu primeiro pet? ")
+            cliente = Cliente(nome, telefone, endereco, email, cpf, senha, resposta)
             sistema.clientes.append(cliente)
             sistema.salvar_dados()
             print("Cliente cadastrado com sucesso!")
@@ -259,16 +361,32 @@ def menu_principal():
             email = input("Email: ")
             cnpj = input("CNPJ: ")
             senha = input("Senha: ")
-            restaurante = Restaurante(nome, telefone, endereco, email, cnpj, senha)
+            resposta = input("Pergunta secreta - Qual o nome do seu primeiro pet? ")
+            restaurante = Restaurante(nome, telefone, endereco, email, cnpj, senha, resposta)
             sistema.restaurantes.append(restaurante)
             sistema.salvar_dados()
             print("Restaurante cadastrado com sucesso!")
+
+        elif opcao == "5":
+            recuperar_senha('cliente')
+
+        elif opcao == "6":
+            recuperar_senha('restaurante')
+
+        elif opcao == "7":
+            login = input("Login: ")
+            senha = input("Senha: ")
+            if login == "admin" and senha == "admin123":
+                interface_admin()
+            else:
+                print("Credenciais de administrador incorretas.")
 
         elif opcao == "0":
             print("Saindo...")
             break
         else:
             print("Opção inválida.")
+
 
 sistema = Sistema()
 menu_principal()
