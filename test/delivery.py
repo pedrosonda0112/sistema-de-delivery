@@ -217,7 +217,7 @@ def ver_pedidos_restaurante(restaurante):
 
 def menu_principal():
     while True:
-        print("\n--- Sistema de Entregas (Console) ---")
+        print("\n--- Sistema de Delivery (Console) ---")
         print("1 - Login Cliente\n2 - Login Restaurante\n3 - Cadastrar Cliente\n4 - Cadastrar Restaurante\n0 - Sair")
         opcao = input("Escolha uma opção: ")
 
