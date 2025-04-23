@@ -94,6 +94,6 @@ Requisitos Atendidos
 - [x] Persistência em arquivo.
 - [x] Interface funcional no console.
 
-👤 Autor
+Autor
 
 Pedro Sonda
